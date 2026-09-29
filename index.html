@@ -983,7 +983,64 @@
       renderRoomingTable();
       alert("4인 1조 자동 배정이 완료되었습니다!");
     };
+// 입력한 내용이 지워지지 않고 안전하게 저장되는 함수
+    window.saveVersionData = async function() {
+      const versionDate = document.getElementById('versionDateInput').value;
+      const versionName = document.getElementById('versionNameInput').value;
 
+      if (!versionDate) {
+        alert('행사 날짜를 선택해주세요.');
+        return;
+      }
+
+      const rows = document.querySelectorAll('#scheduleTableBody tr');
+      const schedules = [];
+
+      rows.forEach(row => {
+        const dayInput = row.querySelector('.schedule-day');
+        const timeInput = row.querySelector('.schedule-time');
+        const detailArea = row.querySelector('.schedule-detail');
+        const mealArea = row.querySelector('.schedule-meal');
+
+        if (dayInput && detailArea) {
+          schedules.push({
+            day: dayInput.value,
+            time: timeInput ? timeInput.value : '',
+            detail: detailArea.value,
+            meal: mealArea ? mealArea.value : ''
+          });
+        }
+      });
+
+      const flightOut = document.getElementById('flightOut') ? document.getElementById('flightOut').value : '';
+      const flightIn = document.getElementById('flightIn') ? document.getElementById('flightIn').value : '';
+      const hotelName = document.getElementById('hotelName') ? document.getElementById('hotelName').value : '';
+      const hotelRooms = document.getElementById('hotelRooms') ? document.getElementById('hotelRooms').value : '';
+      const guideBus = document.getElementById('guideBus') ? document.getElementById('guideBus').value : '';
+      const guideAgency = document.getElementById('guideAgency') ? document.getElementById('guideAgency').value : '';
+
+      const dataToSave = {
+        versionName: versionName,
+        flightOut: flightOut,
+        flightIn: flightIn,
+        hotelName: hotelName,
+        hotelRooms: hotelRooms,
+        guideBus: guideBus,
+        guideAgency: guideAgency,
+        schedules: schedules,
+        rooming: window.roomingData || [],
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(doc(db, "tourVersions", versionDate), dataToSave);
+        alert('성공적으로 저장되었습니다!');
+        loadSavedVersionsList();
+      } catch (error) {
+        console.error("저장 중 오류 발생: ", error);
+        alert('저장 중 오류가 발생했습니다.');
+      }
+    };
     window.onload = function() {
       const defaultDate = "2026-09-29"; 
       document.getElementById("versionDateInput").value = defaultDate;
