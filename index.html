@@ -20,8 +20,7 @@
     .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .table th { background-color: #f1f3f5; text-align: center; vertical-align: middle; font-weight: 600; font-size: 0.95rem; color: #495057; padding: 12px 8px; }
     .table td { vertical-align: middle; font-size: 1rem; padding: 14px 10px; }
-    .table-hover tbody tr { transition: background-color 0.15s; cursor: pointer; }
-    .table-hover tbody tr:hover { background-color: #f1f5f9; }
+    .table-hover tbody tr { transition: background-color 0.15s; }
     
     /* 일정표 날짜 셀 스타일 */
     .day-cell {
@@ -54,6 +53,41 @@
       border: 1px solid #c7d2fe;
     }
 
+    /* 방/조 카드 배치 뷰 스타일 */
+    .room-card-item {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+    .room-card-header {
+      background-color: #f8fafc;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .room-card-body {
+      padding: 12px 14px;
+    }
+    .room-member-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px dashed #f1f5f9;
+    }
+    .room-member-row:last-child {
+      border-bottom: none;
+    }
+
     /* 모달 내 옵션 선택용 칩 버튼 */
     .option-chip {
       border: 1px solid #ced4da;
@@ -82,12 +116,12 @@
     .family-start { border-top: 2px solid #0d6efd !important; }
     .family-group-border { border-left: 4px solid #0d6efd !important; padding-left: 12px !important; font-size: 1.05rem !important; }
 
-    /* 자동 늘어나는 textarea 스타일 공통 */
-    .auto-textarea {
-      resize: none;
-      overflow-y: hidden;
+    /* 마우스로 크기 조절 가능한 textarea 스타일 */
+    .manual-resize-textarea {
+      resize: vertical;
       box-sizing: border-box;
       line-height: 1.5;
+      min-height: 80px;
     }
 
     /* 식사 정보 세로 정렬 스타일 */
@@ -97,6 +131,7 @@
       padding: 6px 8px;
       border-radius: 6px;
       border: 1px solid #e9ecef;
+      min-height: 80px;
     }
 
     /* 통계 카드 스타일 */
@@ -108,30 +143,89 @@
       border: 1px solid #e9ecef;
     }
 
-    /* 인쇄 전용 최적화 스타일 */
+    /* ==========================================
+       ★ 인쇄 전용 최적화 스타일 (PRINT CSS) ★
+       ========================================== */
     @media print {
       .no-print, .btn, .nav-tabs, .alert, input:not([type="hidden"]) {
         display: none !important;
       }
-      body { padding: 0 !important; background-color: white !important; color: #000 !important; font-size: 11pt; }
-      .container-fluid { width: 100% !important; padding: 0 !important; margin: 0 !important; }
-      .card { border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 10px !important; }
-      .table-responsive { overflow: visible !important; }
-      table { width: 100% !important; border-collapse: collapse !important; }
-      tr { page-break-inside: avoid; }
-      .table th { background-color: #e9ecef !important; color: #000 !important; border: 1px solid #dee2e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .table td { border: 1px solid #dee2e6 !important; padding: 8px !important; }
-      textarea.form-control { border: none !important; background: transparent !important; resize: none !important; padding: 0 !important; box-shadow: none !important; overflow: visible !important; }
-      .badge, .bus-num-badge, .badge-roomtype, .badge-relation-target, .badge-relation-family { border: 1px solid #999 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .tab-pane:not(.show) { display: none !important; }
-      .tab-pane { display: block !important; opacity: 1 !important; }
+
+      body {
+        padding: 0 !important;
+        background-color: white !important;
+        color: #000 !important;
+        font-size: 11pt;
+      }
+
+      .container-fluid {
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      .card {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin-bottom: 10px !important;
+      }
+
+      .table-responsive {
+        overflow: visible !important;
+      }
+
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+
+      tr {
+        page-break-inside: avoid;
+      }
+
+      .table th {
+        background-color: #e9ecef !important;
+        color: #000 !important;
+        border: 1px solid #dee2e6 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .table td {
+        border: 1px solid #dee2e6 !important;
+        padding: 8px !important;
+      }
+
+      textarea.form-control {
+        border: none !important;
+        background: transparent !important;
+        resize: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+      }
+
+      .badge, .bus-num-badge, .badge-roomtype, .badge-relation-target, .badge-relation-family {
+        border: 1px solid #999 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .tab-pane:not(.show) {
+        display: none !important;
+      }
+      .tab-pane {
+        display: block !important;
+        opacity: 1 !important;
+      }
     }
   </style>
 </head>
 <body class="p-4">
 
   <div class="container-fluid">
-    <!-- 상단 컨트롤 바 -->
+    <!-- 상단 컨트롤 바 (인쇄 시 숨겨짐) -->
     <div class="d-flex justify-content-between align-items-center mb-3 no-print bg-white p-3 rounded shadow-sm flex-wrap gap-3">
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <label class="fw-bold text-secondary">📅 행사 날짜:</label>
@@ -140,11 +234,12 @@
         <label class="fw-bold text-secondary ms-2">행사 제목:</label>
         <input type="text" id="versionNameInput" class="form-control form-control-sm fw-bold" style="width: 280px;" value="애터미 샤론로즈마스터 푸꾸옥 승급 여행">
         
-        <button class="btn btn-sm btn-success px-3 fw-bold" onclick="saveVersionData()">💾 Firebase 저장하기</button>
+        <button class="btn btn-sm btn-success px-3 fw-bold" onclick="saveVersionData()">💾 전체 저장하기</button>
         <button class="btn btn-sm btn-outline-primary px-3" onclick="duplicateCurrentToNewDate()">📋 현재 내용으로 새 회차 생성</button>
         <button class="btn btn-sm btn-outline-secondary px-3" onclick="createNewVersion()">✨ 빈 양식으로 시작</button>
       </div>
 
+      <!-- 저장된 행사 목록 선택 드롭다운 -->
       <div class="d-flex align-items-center gap-2">
         <label class="fw-bold text-secondary small">📁 저장된 회차 목록:</label>
         <select id="savedVersionsSelect" class="form-select form-select-sm fw-bold text-dark" style="width: 250px;" onchange="selectSavedVersion(this.value)">
@@ -167,55 +262,72 @@
 
     <div class="tab-content" id="mainTabContent">
       
-      <!-- 1. 일정표 탭 -->
+      <!-- 1. 일자별 일정표 및 상단 정보 탭 -->
       <div class="tab-pane fade show active" id="schedule" role="tabpanel">
         <div class="card p-4">
+          
+          <!-- 상단 정보 수정 영역 -->
           <div class="row g-3 mb-4">
             <div class="col-md-4">
-              <div class="p-3 border rounded bg-white shadow-sm h-100">
-                <h6 class="fw-bold text-primary mb-2">✈️ 항공 편명 및 일정</h6>
-                <div class="mb-2">
-                  <label class="small text-muted fw-bold">출국편 정보</label>
-                  <input type="text" id="flightOut" class="form-control form-control-sm" value="출국(KE485): 인천 → 푸꾸옥 (19:05 ~ 22:50)">
-                </div>
+              <div class="p-3 border rounded bg-white shadow-sm h-100 d-flex flex-column justify-content-between">
                 <div>
-                  <label class="small text-muted fw-bold">입국편 정보</label>
-                  <input type="text" id="flightIn" class="form-control form-control-sm" value="입국(KE486): 푸꾸옥 → 인천 (00:10 ~ 07:50)">
+                  <h6 class="fw-bold text-primary mb-2">✈️ 항공 편명 및 일정</h6>
+                  <div class="mb-2">
+                    <label class="small text-muted fw-bold">출국편 정보</label>
+                    <input type="text" id="flightOut" class="form-control form-control-sm" value="출국(KE485): 인천 → 푸꾸옥 (19:05 ~ 22:50)">
+                  </div>
+                  <div>
+                    <label class="small text-muted fw-bold">입국편 정보</label>
+                    <input type="text" id="flightIn" class="form-control form-control-sm" value="입국(KE486): 푸꾸옥 → 인천 (00:10 ~ 07:50)">
+                  </div>
+                </div>
+                <div class="mt-3 no-print">
+                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveTopInfoSection('항공 편명 및 일정')">💾 항공 정보 저장</button>
                 </div>
               </div>
             </div>
 
             <div class="col-md-4">
-              <div class="p-3 border rounded bg-white shadow-sm h-100">
-                <h6 class="fw-bold text-primary mb-2">🏨 투숙 호텔 정보 수정</h6>
-                <div class="mb-2">
-                  <label class="small text-muted fw-bold">호텔명 및 일정</label>
-                  <input type="text" id="hotelName" class="form-control form-control-sm" value="모벤픽 푸꾸옥 리조트 (4박 5일)">
-                </div>
+              <div class="p-3 border rounded bg-white shadow-sm h-100 d-flex flex-column justify-content-between">
                 <div>
-                  <label class="small text-muted fw-bold">객실 타입 및 배정 수량</label>
-                  <input type="text" id="hotelRooms" class="form-control form-control-sm" value="TWN 15실 / KING 5실 / TRIPLE 2실">
+                  <h6 class="fw-bold text-primary mb-2">🏨 투숙 호텔 정보 수정</h6>
+                  <div class="mb-2">
+                    <label class="small text-muted fw-bold">호텔명 및 일정</label>
+                    <input type="text" id="hotelName" class="form-control form-control-sm" value="모벤픽 푸꾸옥 리조트 (4박 5일)">
+                  </div>
+                  <div>
+                    <label class="small text-muted fw-bold">객실 타입 및 배정 수량</label>
+                    <input type="text" id="hotelRooms" class="form-control form-control-sm" value="TWN 15실 / KING 5실 / TRIPLE 2실">
+                  </div>
+                </div>
+                <div class="mt-3 no-print">
+                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveTopInfoSection('투숙 호텔 정보')">💾 호텔 정보 저장</button>
                 </div>
               </div>
             </div>
 
             <div class="col-md-4">
-              <div class="p-3 border rounded bg-white shadow-sm h-100">
-                <h6 class="fw-bold text-primary mb-2">📞 현지 가이드 & 인솔자</h6>
-                <div class="mb-2">
-                  <label class="small text-muted fw-bold">차량별 가이드</label>
-                  <input type="text" id="guideBus" class="form-control form-control-sm" value="1호:박재우(+84 939603023) / 2호:정보맨(+84 866743381)">
-                </div>
+              <div class="p-3 border rounded bg-white shadow-sm h-100 d-flex flex-column justify-content-between">
                 <div>
-                  <label class="small text-muted fw-bold">여행사 담당자</label>
-                  <input type="text" id="guideAgency" class="form-control form-control-sm" value="모두투어: 원광재 차장 / 김민제 과장">
+                  <h6 class="fw-bold text-primary mb-2">📞 현지 가이드 & 인솔자</h6>
+                  <div class="mb-2">
+                    <label class="small text-muted fw-bold">차량별 가이드</label>
+                    <input type="text" id="guideBus" class="form-control form-control-sm" value="1호:박재우(+84 939603023) / 2호:정보맨(+84 866743381)">
+                  </div>
+                  <div>
+                    <label class="small text-muted fw-bold">여행사 담당자</label>
+                    <input type="text" id="guideAgency" class="form-control form-control-sm" value="모두투어: 원광재 차장 / 김민제 과장">
+                  </div>
+                </div>
+                <div class="mt-3 no-print">
+                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveTopInfoSection('가이드 정보')">💾 가이드 정보 저장</button>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold text-dark m-0">🗓️ 일자별 세부 시간대 통합 일정표</h5>
+            <h5 class="fw-bold text-dark m-0">🗓 일자별 세부 시간대 통합 일정표</h5>
             <button class="btn btn-sm btn-primary no-print px-3" onclick="addScheduleBlock()">+ 새로운 날짜 블록 추가</button>
           </div>
 
@@ -225,9 +337,9 @@
                 <tr>
                   <th style="width: 15%;">일자 및 요일</th>
                   <th style="width: 15%;">시간</th>
-                  <th style="width: 40%;">상세 일정 및 이동 내용</th>
+                  <th style="width: 38%;">상세 일정 및 이동 내용</th>
                   <th style="width: 20%;">식사 안내 (조 / 중 / 석)</th>
-                  <th style="width: 10%;" class="no-print">관리</th>
+                  <th style="width: 12%;" class="no-print">관리</th>
                 </tr>
               </thead>
               <tbody id="scheduleTableBody"></tbody>
@@ -239,6 +351,7 @@
       <!-- 2. 루밍리스트 탭 -->
       <div class="tab-pane fade" id="rooming" role="tabpanel">
         <div class="card p-4">
+          
           <div class="row g-2 mb-3">
             <div class="col-md-3">
               <div class="stat-card d-flex justify-content-between align-items-center">
@@ -278,10 +391,14 @@
             </div>
           </div>
 
+          <!-- 보기 모드 전환 및 검색/추가 바 -->
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div class="d-flex align-items-center gap-3">
-              <h5 class="fw-bold text-dark m-0">🛋️ 호차별 루밍 및 조 편성 명단</h5>
-              <span id="summaryBadge" class="badge bg-primary fs-6 fw-normal">총 0명</span>
+              <h5 class="fw-bold text-dark m-0">🛋️ 루밍 리스트 관리</h5>
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-primary active" id="viewModeTableBtn" onclick="switchViewMode('table')">📋 표 형식 보기</button>
+                <button type="button" class="btn btn-outline-primary" id="viewModeCardBtn" onclick="switchViewMode('card')">🗂️ 방/조 기준 카드 배치</button>
+              </div>
             </div>
             <div class="d-flex gap-2 no-print">
               <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="🔍 이름 검색..." style="width: 180px;" oninput="renderRoomingTable()">
@@ -291,10 +408,21 @@
 
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <div class="d-flex gap-1 no-print flex-wrap" id="busFilterButtons"></div>
-            <button class="btn btn-sm btn-outline-primary py-1 no-print" onclick="autoGroupBy4()">일행 유지하며 4인 1조 자동지정</button>
+            <div class="d-flex align-items-center gap-2">
+              <span id="summaryBadge" class="badge bg-primary fs-6 fw-normal">총 0명</span>
+              <button class="btn btn-sm btn-outline-primary py-1 no-print" onclick="autoGroupBy4()">일행 유지하며 4인 1조 자동지정</button>
+            </div>
           </div>
 
-          <div class="table-responsive">
+          <div class="alert alert-light border d-flex align-items-center justify-content-between mb-3 py-2 no-print">
+            <div>
+              <span class="text-primary fw-bold small">💡 입력 팁:</span>
+              <span class="text-muted small">행이나 카드를 클릭하면 <b>[조, 가족관계, 룸타입, 방번호]</b>를 모달에서 빠르게 수정할 수 있습니다. 각 행의 [➕ 행추가]를 누르면 해당 인물 아래에 바로 팀원을 추가할 수 있습니다.</span>
+            </div>
+          </div>
+
+          <!-- 표 형식 뷰 컨테이너 -->
+          <div id="tableViewContainer" class="table-responsive">
             <table class="table table-bordered table-hover align-middle">
               <thead>
                 <tr>
@@ -304,20 +432,26 @@
                   <th style="width: 13%;">한글명</th>
                   <th style="width: 11%;">가족관계</th>
                   <th style="width: 10%;">룸 타입</th>
-                  <th style="width: 24%;">특이사항 / 메모</th>
-                  <th style="width: 12%;" class="no-print">관리</th>
+                  <th style="width: 22%;">특이사항 / 메모</th>
+                  <th style="width: 14%;" class="no-print">관리</th>
                 </tr>
               </thead>
               <tbody id="roomingTableBody"></tbody>
             </table>
           </div>
+
+          <!-- 방/조 카드 배치 뷰 컨테이너 -->
+          <div id="cardViewContainer" class="d-none">
+            <div class="row" id="roomCardGrid"></div>
+          </div>
+
         </div>
       </div>
 
     </div>
   </div>
 
-  <!-- 모달 -->
+  <!-- 모달 (Modal) -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -406,30 +540,13 @@
     </div>
   </div>
 
-  <!-- Firebase SDK 설정 및 연동 스크립트 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyBt05R6Uhf5Bj4jZWGFVKvVi2kjLoTKwvQ",
-      authDomain: "atomy-tour.firebaseapp.com",
-      projectId: "atomy-tour",
-      storageBucket: "atomy-tour.firebasestorage.app",
-      messagingSenderId: "238462625711",
-      appId: "1:238462625711:web:00bfce1da46b2904a0f15a",
-      measurementId: "G-5GBGTW4KXK"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
+  <script>
     const defaultSchedule = [
-      { day: "DAY 1 (9/29)", time: "19:05", detail: "인천 국제 공항 출발 (KE485)\n푸꾸옥 국제 공항 도착 (22:50)\n호텔 투숙 및 휴식 (모벤픽 푸꾸옥 리조트)", meal: "조: X\n중: X\n석: 기내식" },
-      { day: "DAY 2 (9/30)", time: "전일", detail: "호텔에서 조식 후\n(오전) 호텔 부대 시설 이용 및 자유 시간\n\n[푸꾸옥 남부 투어]\n전신 마사지 90분 (매너 팁 포함)\n키스 브릿지\n심포니 오브 더 씨", meal: "조: 호텔식\n중: 호텔식 (한식 SET)\n석: 현지식 (갱스)" },
-      { day: "DAY 3 (10/1)", time: "전일", detail: "호텔에서 조식 후\n(오전 / 오후) 호텔 부대 시설 이용 및 자유 시간\n애터미 호텔 단독 만찬 및 가족 세미나 (17:30 ~ 20:00)\n호텔 투숙 및 휴식", meal: "조: 호텔식\n중: 호텔식 (바우처 SET 택 1)\n석: 호텔 만찬 (단독 뷔페)" },
-      { day: "DAY 4 (10/2)", time: "21:30", detail: "호텔에서 조식 후 (오전) 호텔 부대 시설 이용 및 자유 시간\n호텔 체크아웃\n킹콩 마트 및 여행자 거리 자유 시간\n전신 마사지 90분 (매너 팁 포함)\n즈엉동 야시장\n푸꾸옥 국제 공항 이동", meal: "조: 호텔식\n중: 껌디디\n석: 한식 (한국관)" },
-      { day: "DAY 5 (10/3)", time: "00:10", detail: "푸꾸옥 국제 공항 출발 (00:10)\n인천 국제 공항 도착 (07:50)", meal: "조: 기내식\n중: X\n석: X" }
+      { day: "DAY 1 (9/30)", time: "19:05", detail: "인천 국제 공항 출발 (KE485)\n푸꾸옥 국제 공항 도착 (22:50)\n호텔 투숙 및 휴식 (모벤픽 푸꾸옥 리조트)", meal: "조: X\n중: X\n석: 기내식" },
+      { day: "DAY 2 (10/1)", time: "전일", detail: "호텔에서 조식 후\n(오전) 호텔 부대 시설 이용 및 자유 시간\n\n[푸꾸옥 남부 투어]\n전신 마사지 90분 (매너 팁 포함)\n키스 브릿지\n심포니 오브 더 씨", meal: "조: 호텔식\n중: 호텔식 (한식 SET)\n석: 현지식 (갱스)" },
+      { day: "DAY 3 (10/2)", time: "전일", detail: "호텔에서 조식 후\n(오전 / 오후) 호텔 부대 시설 이용 및 자유 시간\n애터미 호텔 단독 만찬 및 가족 세미나 (17:30 ~ 20:00)\n호텔 투숙 및 휴식", meal: "조: 호텔식\n중: 호텔식 (바우처 SET 택 1)\n석: 호텔 만찬 (단독 뷔페)" },
+      { day: "DAY 4 (10/3)", time: "21:30", detail: "호텔에서 조식 후 (오전) 호텔 부대 시설 이용 및 자유 시간\n호텔 체크아웃\n킹콩 마트 및 여행자 거리 자유 시간\n전신 마사지 90분 (매너 팁 포함)\n즈엉동 야시장\n푸꾸옥 국제 공항 이동", meal: "조: 호텔식\n중: 껌디디\n석: 한식 (한국관)" },
+      { day: "DAY 5 (10/4)", time: "00:10", detail: "푸꾸옥 국제 공항 출발 (00:10)\n인천 국제 공항 도착 (07:50)", meal: "조: 기내식\n중: X\n석: X" }
     ];
 
     const defaultRooming = [
@@ -540,60 +657,82 @@
     let scheduleData = [];
     let roomingData = [];
     let currentBusFilter = "1호차";
+    let currentViewMode = "table"; 
     let bootstrapModal = null;
 
-    window.updateSavedVersionsDropdown = async function(currentKey) {
+    function switchViewMode(mode) {
+      currentViewMode = mode;
+      const tableBtn = document.getElementById("viewModeTableBtn");
+      const cardBtn = document.getElementById("viewModeCardBtn");
+      const tableContainer = document.getElementById("tableViewContainer");
+      const cardContainer = document.getElementById("cardViewContainer");
+
+      if (mode === 'table') {
+        tableBtn.classList.add("active");
+        cardBtn.classList.remove("active");
+        tableContainer.classList.remove("d-none");
+        cardContainer.classList.add("d-none");
+      } else {
+        cardBtn.classList.add("active");
+        tableBtn.classList.remove("active");
+        cardContainer.classList.remove("d-none");
+        tableContainer.classList.add("d-none");
+      }
+      renderRoomingTable();
+    }
+
+    function updateSavedVersionsDropdown(currentKey) {
       const select = document.getElementById("savedVersionsSelect");
       select.innerHTML = '<option value="">-- 저장된 행사 불러오기 --</option>';
 
-      try {
-        const querySnapshot = await getDocs(collection(db, "atomy_tours"));
-        let keys = [];
-        querySnapshot.forEach((docSnap) => {
-          keys.push(docSnap.id);
-        });
-        keys.sort().reverse();
-
-        keys.forEach(dateStr => {
-          const option = document.createElement("option");
-          option.value = dateStr;
-          option.textContent = dateStr;
-          if (dateStr === currentKey) {
-            option.selected = true;
-          }
-          select.appendChild(option);
-        });
-      } catch (e) {
-        console.error("목록 불러오기 실패:", e);
+      let keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith("atomy_tour_")) {
+          keys.push(key.replace("atomy_tour_", ""));
+        }
       }
-    };
+      keys.sort().reverse();
 
-    window.loadVersion = async function() {
+      keys.forEach(dateStr => {
+        let title = dateStr;
+        try {
+          const savedData = JSON.parse(localStorage.getItem(`atomy_tour_${dateStr}`));
+          if (savedData && savedData.versionName) {
+            title = `${dateStr} - ${savedData.versionName}`;
+          }
+        } catch (e) {}
+
+        const option = document.createElement("option");
+        option.value = dateStr;
+        option.textContent = title;
+        if (dateStr === currentKey) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
+    }
+
+    function loadVersion() {
       const dateInput = document.getElementById("versionDateInput").value;
       if (!dateInput) return;
 
-      try {
-        const docRef = doc(db, "atomy_tours", dateInput);
-        const docSnap = await getDoc(docRef);
+      const storageKey = `atomy_tour_${dateInput}`;
+      const savedData = localStorage.getItem(storageKey);
 
-        if (docSnap.exists()) {
-          const parsed = docSnap.data();
-          document.getElementById("versionNameInput").value = parsed.versionName || "애터미 샤론로즈마스터 푸꾸옥 승급 여행";
-          document.getElementById("flightOut").value = parsed.flightOut || "출국(KE485): 인천 → 푸꾸옥 (19:05 ~ 22:50)";
-          document.getElementById("flightIn").value = parsed.flightIn || "입국(KE486): 푸꾸옥 → 인천 (00:10 ~ 07:50)";
-          document.getElementById("hotelName").value = parsed.hotelName || "모벤픽 푸꾸옥 리조트 (4박 5일)";
-          document.getElementById("hotelRooms").value = parsed.hotelRooms || "TWN 15실 / KING 5실 / TRIPLE 2실";
-          document.getElementById("guideBus").value = parsed.guideBus || "1호:박재우(+84 939603023) / 2호:정보맨(+84 866743381)";
-          document.getElementById("guideAgency").value = parsed.guideAgency || "모두투어: 원광재 차장 / 김민제 과장";
-          
-          scheduleData = parsed.schedule && parsed.schedule.length > 0 ? parsed.schedule : JSON.parse(JSON.stringify(defaultSchedule));
-          roomingData = parsed.rooming && parsed.rooming.length > 0 ? parsed.rooming : JSON.parse(JSON.stringify(defaultRooming));
-        } else {
-          scheduleData = JSON.parse(JSON.stringify(defaultSchedule));
-          roomingData = JSON.parse(JSON.stringify(defaultRooming));
-        }
-      } catch (e) {
-        console.error("데이터 로드 오류:", e);
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        document.getElementById("versionNameInput").value = parsed.versionName || "애터미 샤론로즈마스터 푸꾸옥 승급 여행";
+        document.getElementById("flightOut").value = parsed.flightOut || "출국(KE485): 인천 → 푸꾸옥 (19:05 ~ 22:50)";
+        document.getElementById("flightIn").value = parsed.flightIn || "입국(KE486): 푸꾸옥 → 인천 (00:10 ~ 07:50)";
+        document.getElementById("hotelName").value = parsed.hotelName || "모벤픽 푸꾸옥 리조트 (4박 5일)";
+        document.getElementById("hotelRooms").value = parsed.hotelRooms || "TWN 15실 / KING 5실 / TRIPLE 2실";
+        document.getElementById("guideBus").value = parsed.guideBus || "1호:박재우(+84 939603023) / 2호:정보맨(+84 866743381)";
+        document.getElementById("guideAgency").value = parsed.guideAgency || "모두투어: 원광재 차장 / 김민제 과장";
+        
+        scheduleData = parsed.schedule && parsed.schedule.length > 0 ? parsed.schedule : JSON.parse(JSON.stringify(defaultSchedule));
+        roomingData = parsed.rooming && parsed.rooming.length > 0 ? parsed.rooming : JSON.parse(JSON.stringify(defaultRooming));
+      } else {
         scheduleData = JSON.parse(JSON.stringify(defaultSchedule));
         roomingData = JSON.parse(JSON.stringify(defaultRooming));
       }
@@ -601,21 +740,22 @@
       renderScheduleTable();
       renderRoomingTable();
       updateSavedVersionsDropdown(dateInput);
-    };
+    }
 
-    window.selectSavedVersion = function(dateStr) {
+    function selectSavedVersion(dateStr) {
       if (!dateStr) return;
       document.getElementById("versionDateInput").value = dateStr;
       loadVersion();
-    };
+    }
 
-    window.saveVersionData = async function() {
+    function saveVersionData() {
       const dateInput = document.getElementById("versionDateInput").value;
       if (!dateInput) {
         alert("행사 날짜를 선택해주세요!");
         return;
       }
 
+      const storageKey = `atomy_tour_${dateInput}`;
       const payload = {
         versionName: document.getElementById("versionNameInput").value,
         flightOut: document.getElementById("flightOut").value,
@@ -628,26 +768,36 @@
         rooming: roomingData
       };
 
-      try {
-        await setDoc(doc(db, "atomy_tours", dateInput), payload);
-        updateSavedVersionsDropdown(dateInput);
-        alert(`[${dateInput}] 행사 데이터가 Firebase 클라우드에 성공적으로 저장되었습니다!`);
-      } catch (e) {
-        console.error("저장 실패:", e);
-        alert("저장 중 오류가 발생했습니다: " + e.message);
-      }
-    };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+      updateSavedVersionsDropdown(dateInput);
+      alert(`[${dateInput}] 행사 데이터가 성공적으로 저장되었습니다!`);
+    }
 
-    window.duplicateCurrentToNewDate = function() {
+    function saveTopInfoSection(sectionName) {
+      saveVersionData();
+      alert(`[${sectionName}] 정보가 저장되었습니다.`);
+    }
+
+    function saveScheduleRow(index) {
+      saveVersionData();
+      alert(`[DAY ${index + 1}] 일정 내용이 개별 저장되었습니다.`);
+    }
+
+    function duplicateCurrentToNewDate() {
       const newDate = prompt("새로운 회차의 행사 날짜를 입력하세요 (예: 2026-11-15):", "");
       if (!newDate) return;
+
+      const storageKey = `atomy_tour_${newDate}`;
+      if (localStorage.getItem(storageKey)) {
+        if (!confirm(`이미 [${newDate}] 날짜로 저장된 데이터가 있습니다. 덮어씌우시겠습니까?`)) return;
+      }
 
       document.getElementById("versionDateInput").value = newDate;
       saveVersionData();
       alert(`기존 일정을 복사하여 [${newDate}] 새 회차가 생성되었습니다!`);
-    };
+    }
 
-    window.createNewVersion = function() {
+    function createNewVersion() {
       const newDate = prompt("새로운 행사 날짜를 입력하세요 (예: 2026-10-15):", "");
       if (!newDate) return;
 
@@ -658,33 +808,24 @@
       renderRoomingTable();
       updateSavedVersionsDropdown(newDate);
       alert(`${newDate} 날짜로 기본 양식이 준비되었습니다.`);
-    };
+    }
 
-    window.deleteCurrentVersion = async function() {
+    function deleteCurrentVersion() {
       const dateInput = document.getElementById("versionDateInput").value;
       if (!dateInput) return;
 
-      if (confirm(`정말 [${dateInput}] 저장된 행사 데이터를 Firebase에서 삭제하시겠습니까?`)) {
-        try {
-          await deleteDoc(doc(db, "atomy_tours", dateInput));
-          alert("삭제되었습니다.");
-          updateSavedVersionsDropdown("");
-          const select = document.getElementById("savedVersionsSelect");
-          if (select.options.length > 1) {
-            select.selectedIndex = 1;
-            select.onchange();
-          } else {
-            createNewVersion();
-          }
-        } catch (e) {
-          alert("삭제 실패: " + e.message);
+      if (confirm(`정말 [${dateInput}] 저장된 행사 데이터를 삭제하시겠습니까?`)) {
+        localStorage.removeItem(`atomy_tour_${dateInput}`);
+        alert("삭제되었습니다.");
+        updateSavedVersionsDropdown("");
+        const select = document.getElementById("savedVersionsSelect");
+        if (select.options.length > 1) {
+          select.selectedIndex = 1;
+          select.onchange();
+        } else {
+          createNewVersion();
         }
       }
-    };
-
-    function autoResizeTextarea(textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = textarea.scrollHeight + 'px';
     }
 
     function renderScheduleTable() {
@@ -707,50 +848,47 @@
           renderedDays[item.day] = true;
           dayCellHTML = `
             <td class="day-cell" rowspan="${totalRowsForThisDay}">
-              <input type="text" class="form-control form-control-sm text-center fw-bold text-primary bg-transparent border-0" value="${item.day}" onchange="updateDayName('${item.day}', this.value)" placeholder="DAY 1 (9/29)">
+              <input type="text" class="form-control form-control-sm text-center fw-bold text-primary bg-transparent border-0" value="${item.day}" onchange="updateDayName('${item.day}', this.value)" placeholder="DAY 1 (9/30)">
             </td>
           `;
         }
 
         tr.innerHTML = `
           ${dayCellHTML}
-          <td><textarea class="form-control form-control-sm text-center auto-textarea" rows="1" oninput="autoResizeTextarea(this); updateSchedule(${index}, 'time', this.value)" placeholder="예: 09:00">${item.time || ''}</textarea></td>
-          <td><textarea class="form-control form-control-sm auto-textarea" rows="3" oninput="autoResizeTextarea(this); updateSchedule(${index}, 'detail', this.value)" placeholder="상세 일정을 입력하세요">${item.detail || ''}</textarea></td>
-          <td><textarea class="form-control form-control-sm meal-box auto-textarea" rows="3" oninput="autoResizeTextarea(this); updateSchedule(${index}, 'meal', this.value)" placeholder="조:\n중:\n석:">${item.meal || ''}</textarea></td>
+          <td><textarea class="form-control form-control-sm text-center manual-resize-textarea" rows="3" oninput="updateSchedule(${index}, 'time', this.value)" placeholder="예: 09:00">${item.time || ''}</textarea></td>
+          <td><textarea class="form-control form-control-sm manual-resize-textarea" rows="4" oninput="updateSchedule(${index}, 'detail', this.value)" placeholder="상세 일정을 입력하세요">${item.detail || ''}</textarea></td>
+          <td><textarea class="form-control form-control-sm meal-box manual-resize-textarea" rows="4" oninput="updateSchedule(${index}, 'meal', this.value)" placeholder="조:\n중:\n석:">${item.meal || ''}</textarea></td>
           <td class="no-print text-center">
-            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="deleteSchedule(${index})" title="행 삭제">🗑️ 삭제</button>
+            <button class="btn btn-sm btn-outline-success py-1 px-2 mb-1 w-100" onclick="saveScheduleRow(${index})" title="이 행 수정사항 저장">💾 수정저장</button>
+            <button class="btn btn-outline-danger btn-sm py-1 px-2 w-100" onclick="deleteSchedule(${index})" title="행 삭제">🗑️ 삭제</button>
           </td>
         `;
         tbody.appendChild(tr);
       });
-
-      setTimeout(() => {
-        document.querySelectorAll('.auto-textarea').forEach(el => autoResizeTextarea(el));
-      }, 0);
     }
 
-    window.updateSchedule = function(index, field, value) {
+    function updateSchedule(index, field, value) {
       scheduleData[index][field] = value;
-    };
+    }
 
-    window.updateDayName = function(oldName, newName) {
+    function updateDayName(oldName, newName) {
       scheduleData.forEach(item => {
         if (item.day === oldName) {
           item.day = newName;
         }
       });
       renderScheduleTable();
-    };
+    }
 
-    window.addScheduleBlock = function() {
-      const newDay = prompt("새로운 날짜명을 입력하세요 (예: DAY 5 (10/3)):", "DAY 5 (10/3)");
+    function addScheduleBlock() {
+      const newDay = prompt("새로운 날짜명을 입력하세요 (예: DAY 5 (10/4)):", "DAY 5 (10/4)");
       if (!newDay) return;
 
       scheduleData.push({ day: newDay, time: "", detail: "일정 내용 입력", meal: "조: X\n중: X\n석: X" });
       renderScheduleTable();
-    };
+    }
 
-    window.deleteSchedule = function(index) {
+    function deleteSchedule(index) {
       if (scheduleData.length <= 1) {
         alert("최소 1개의 일정은 유지되어야 합니다.");
         return;
@@ -759,7 +897,7 @@
         scheduleData.splice(index, 1);
         renderScheduleTable();
       }
-    };
+    }
 
     function getBusCounts() {
       return {
@@ -801,13 +939,10 @@
       document.getElementById("summaryBadge").innerText = `${currentBusFilter === 'all' ? '전체' : currentBusFilter} 인원: 총 ${currentCount}명`;
     }
 
-    window.renderRoomingTable = function() {
+    function renderRoomingTable() {
       renderFilterButtons();
       updateStatistics();
       
-      const tbody = document.getElementById("roomingTableBody");
-      tbody.innerHTML = "";
-
       const searchQuery = document.getElementById("searchInput").value.trim().toLowerCase();
 
       const filteredData = roomingData.filter(item => {
@@ -815,6 +950,17 @@
         const matchesSearch = searchQuery === '' || item.name.toLowerCase().includes(searchQuery) || (item.memo && item.memo.toLowerCase().includes(searchQuery));
         return matchesBus && matchesSearch;
       });
+
+      if (currentViewMode === 'table') {
+        renderTableView(filteredData);
+      } else {
+        renderCardView(filteredData);
+      }
+    }
+
+    function renderTableView(filteredData) {
+      const tbody = document.getElementById("roomingTableBody");
+      tbody.innerHTML = "";
 
       filteredData.forEach((item, index) => {
         const globalIndex = roomingData.indexOf(item);
@@ -842,22 +988,92 @@
           <td><span class="badge ${relationBadgeClass}">${item.relation}</span></td>
           <td><span class="badge badge-roomtype">${item.roomType}</span></td>
           <td class="text-start text-secondary small">${item.memo || ''}</td>
-          <td class="no-print" onclick="event.stopPropagation()">
-            <button class="btn btn-sm btn-outline-primary py-0 me-1" onclick="openEditModal(${globalIndex})">✏️ 수정</button>
-            <button class="btn btn-sm btn-outline-danger py-0" onclick="deleteMember(${globalIndex})">삭제</button>
+          <td class="no-print text-center" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-outline-success py-0 px-1 mb-1 w-100" onclick="insertMemberAfter(${globalIndex})" title="이 인물 바로 아래에 추가">➕ 행추가</button>
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-outline-primary py-0 flex-fill" onclick="openEditModal(${globalIndex})">수정</button>
+              <button class="btn btn-sm btn-outline-danger py-0 flex-fill" onclick="deleteMember(${globalIndex})">삭제</button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
       });
-    };
+    }
 
-    window.filterBus = function(busName) {
+    function renderCardView(filteredData) {
+      const grid = document.getElementById("roomCardGrid");
+      grid.innerHTML = "";
+
+      const groups = {};
+      filteredData.forEach(item => {
+        const key = item.roomNo ? `방: ${item.roomNo}` : (item.group ? `조: ${item.group}` : `미배정 그룹`);
+        if (!groups[key]) {
+          groups[key] = {
+            roomType: item.roomType || 'TWN',
+            bus: item.bus,
+            group: item.group || '',
+            roomNo: item.roomNo || '',
+            members: []
+          };
+        }
+        groups[key].members.push({ item, globalIndex: roomingData.indexOf(item) });
+      });
+
+      const keys = Object.keys(groups);
+      if (keys.length === 0) {
+        grid.innerHTML = '<div class="text-center text-muted py-4">표시할 데이터가 없습니다.</div>';
+        return;
+      }
+
+      keys.forEach(key => {
+        const groupInfo = groups[key];
+        const col = document.createElement("div");
+        col.className = "col-md-4 col-sm-6";
+
+        let membersHTML = groupInfo.members.map(m => {
+          const relClass = m.item.relation === '대상자' ? 'badge-relation-target' : 'badge-relation-family';
+          return `
+            <div class="room-member-row" style="cursor: pointer;" onclick="openEditModal(${m.globalIndex})">
+              <div>
+                <span class="fw-bold text-dark me-2">${m.item.name}</span>
+                <span class="badge ${relClass}" style="font-size:0.75rem; padding:2px 6px;">${m.item.relation}</span>
+                ${m.item.memo ? `<span class="text-muted small ms-1">(${m.item.memo})</span>` : ''}
+              </div>
+              <div class="no-print d-flex gap-1">
+                <button class="btn btn-sm btn-outline-success py-0 px-1" style="font-size:0.7rem;" onclick="event.stopPropagation(); insertMemberAfter(${m.globalIndex})" title="바로 아래 추가">➕</button>
+                <button class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.75rem;" onclick="event.stopPropagation(); openEditModal(${m.globalIndex})">수정</button>
+                <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.75rem;" onclick="event.stopPropagation(); deleteMember(${m.globalIndex})">삭제</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        col.innerHTML = `
+          <div class="room-card-item">
+            <div class="room-card-header">
+              <div>
+                <span class="badge bg-secondary me-1">${groupInfo.bus}</span>
+                ${groupInfo.group ? `<span class="badge bg-success me-1">${groupInfo.group}</span>` : ''}
+                <span class="text-primary fw-bold">${groupInfo.roomNo ? groupInfo.roomNo : key}</span>
+              </div>
+              <span class="badge badge-roomtype" style="font-size:0.8rem; padding:3px 8px;">${groupInfo.roomType}</span>
+            </div>
+            <div class="room-card-body">
+              ${membersHTML}
+            </div>
+          </div>
+        `;
+        grid.appendChild(col);
+      });
+    }
+
+    function filterBus(busName) {
       currentBusFilter = busName;
       document.getElementById("searchInput").value = ""; 
       renderRoomingTable();
-    };
+    }
 
-    window.openEditModal = function(index) {
+    function openEditModal(index) {
       const item = roomingData[index];
       document.getElementById("modalTargetIndex").value = index;
       document.getElementById("modalName").innerText = item.name;
@@ -873,18 +1089,18 @@
         bootstrapModal = new bootstrap.Modal(document.getElementById('editModal'));
       }
       bootstrapModal.show();
-    };
+    }
 
-    window.setGroupInput = function(val) {
+    function setGroupInput(val) {
       document.getElementById("modalGroupInput").value = val;
-    };
+    }
 
-    window.selectChip = function(containerId, element) {
+    function selectChip(containerId, element) {
       const container = document.getElementById(containerId);
       const chips = container.querySelectorAll('.option-chip');
       chips.forEach(c => c.classList.remove('active'));
       element.classList.add('active');
-    };
+    }
 
     function setActiveChip(containerId, value) {
       const container = document.getElementById(containerId);
@@ -904,7 +1120,7 @@
       return activeChip ? activeChip.innerText.trim() : "";
     }
 
-    window.saveModalData = function() {
+    function saveModalData() {
       const index = document.getElementById("modalTargetIndex").value;
       if (index === "" || index === undefined) return;
 
@@ -916,17 +1132,17 @@
 
       renderRoomingTable();
       bootstrapModal.hide();
-    };
+    }
 
-    window.deleteMember = function(index) {
+    function deleteMember(index) {
       if(confirm(`${roomingData[index].name} 님을 삭제하시겠습니까?`)) {
         roomingData.splice(index, 1);
         renderRoomingTable();
       }
-    };
+    }
 
-    window.addMember = function() {
-      const name = prompt("이름을 입력하세요:");
+    function addMember() {
+      const name = prompt("추가할 분의 이름을 입력하세요:");
       if (!name) return;
       
       const newBus = currentBusFilter === 'all' ? '1호차' : currentBusFilter;
@@ -940,9 +1156,29 @@
         memo: ""
       });
       renderRoomingTable();
-    };
+    }
 
-    window.autoGroupBy4 = function() {
+    // 특정 인물 바로 아래에 새 팀원 추가하는 함수
+    function insertMemberAfter(index) {
+      const targetItem = roomingData[index];
+      const name = prompt(`[${targetItem.name}] 님 바로 아래에 추가할 분의 이름을 입력하세요:`);
+      if (!name) return;
+
+      const newItem = {
+        bus: targetItem.bus,
+        group: targetItem.group,
+        roomNo: targetItem.roomNo,
+        name: name,
+        relation: "가족",
+        roomType: targetItem.roomType,
+        memo: ""
+      };
+
+      roomingData.splice(index + 1, 0, newItem);
+      renderRoomingTable();
+    }
+
+    function autoGroupBy4() {
       if (!confirm("현재 버스별 인원을 기준으로 일행이 끊기지 않게 4인 1조를 자동 배정합니다. 진행하시겠습니까?")) return;
 
       ['1호차', '2호차', '3호차'].forEach(bus => {
@@ -974,7 +1210,7 @@
 
       renderRoomingTable();
       alert("4인 1조 자동 배정이 완료되었습니다!");
-    };
+    }
 
     window.onload = function() {
       const defaultDate = "2026-09-29"; 
