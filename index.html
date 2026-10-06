@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>애터미 투어 행사 관리 시스템</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- 엑셀 처리를 위한 SheetJS 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --primary-color: #0d6efd;
@@ -53,7 +55,7 @@
       border: 1px solid #c7d2fe;
     }
 
-    /* 방/조 카드 배치 뷰 스타일 */
+    /* 방/조 카드 배치 뷰 스타일 (드래그 앤 드롭 지원) */
     .room-card-item {
       background: #ffffff;
       border: 1px solid #e2e8f0;
@@ -62,6 +64,10 @@
       margin-bottom: 16px;
       overflow: hidden;
       transition: all 0.2s;
+    }
+    .room-card-item.drag-over {
+      border: 2px dashed #0d6efd;
+      background-color: #f0f7ff;
     }
     .room-card-header {
       background-color: #f8fafc;
@@ -76,16 +82,27 @@
     }
     .room-card-body {
       padding: 12px 14px;
+      min-height: 50px;
     }
     .room-member-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 6px 0;
+      padding: 8px 6px;
       border-bottom: 1px dashed #f1f5f9;
+      border-radius: 6px;
+      cursor: grab;
+      background-color: #fff;
+      margin-bottom: 4px;
+    }
+    .room-member-row:active {
+      cursor: grabbing;
+    }
+    .room-member-row:hover {
+      background-color: #f8fafc;
     }
     .room-member-row:last-child {
-      border-bottom: none;
+      margin-bottom: 0;
     }
 
     /* 모달 내 옵션 선택용 칩 버튼 */
@@ -143,114 +160,61 @@
       border: 1px solid #e9ecef;
     }
 
-    /* ==========================================
-       ★ 인쇄 전용 최적화 스타일 (PRINT CSS) ★
-       ========================================== */
+    /* 인쇄 전용 헤더 */
+    .print-only-header { display: none; }
+
     @media print {
-      .no-print, .btn, .nav-tabs, .alert, input:not([type="hidden"]) {
+      .no-print, .btn, .nav-tabs, .alert, input:not([type="hidden"]), .input-group {
         display: none !important;
       }
-
-      body {
-        padding: 0 !important;
-        background-color: white !important;
-        color: #000 !important;
-        font-size: 11pt;
-      }
-
-      .container-fluid {
-        width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      .card {
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin-bottom: 10px !important;
-      }
-
-      .table-responsive {
-        overflow: visible !important;
-      }
-
-      table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-      }
-
-      tr {
-        page-break-inside: avoid;
-      }
-
-      .table th {
-        background-color: #e9ecef !important;
-        color: #000 !important;
-        border: 1px solid #dee2e6 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      .table td {
-        border: 1px solid #dee2e6 !important;
-        padding: 8px !important;
-      }
-
-      textarea.form-control {
-        border: none !important;
-        background: transparent !important;
-        resize: none !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-        overflow: visible !important;
-      }
-
-      .badge, .bus-num-badge, .badge-roomtype, .badge-relation-target, .badge-relation-family {
-        border: 1px solid #999 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      .tab-pane:not(.show) {
-        display: none !important;
-      }
-      .tab-pane {
-        display: block !important;
-        opacity: 1 !important;
-      }
+      body { padding: 0 !important; background-color: white !important; color: #000 !important; font-size: 10pt; }
+      .container-fluid { width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      .print-only-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+      .card { border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 10px !important; }
+      .table-responsive { overflow: visible !important; }
+      table { width: 100% !important; border-collapse: collapse !important; }
+      tr { page-break-inside: avoid; }
+      .table th { background-color: #e9ecef !important; color: #000 !important; border: 1px solid #dee2e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .table td { border: 1px solid #dee2e6 !important; padding: 6px !important; }
+      textarea.form-control, input.form-control { border: none !important; background: transparent !important; resize: none !important; padding: 0 !important; box-shadow: none !important; overflow: visible !important; }
+      .badge, .bus-num-badge, .badge-roomtype, .badge-relation-target, .badge-relation-family { border: 1px solid #999 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .tab-pane:not(.show) { display: none !important; }
+      .tab-pane { display: block !important; opacity: 1 !important; }
     }
   </style>
 </head>
 <body class="p-4">
 
   <div class="container-fluid">
-    <!-- 상단 컨트롤 바 (인쇄 시 숨겨짐) -->
+    <div class="print-only-header">
+      <h2 id="printTitle" style="font-weight: 800; margin-bottom: 5px;">애터미 투어 행사 관리 시스템</h2>
+      <p style="margin: 0; color: #555; font-size: 11pt;">행사 일자: <span id="printDateSpan"></span> | 인쇄 일시: <span id="printTimestamp"></span></p>
+    </div>
+
+    <!-- 상단 컨트롤 바 -->
     <div class="d-flex justify-content-between align-items-center mb-3 no-print bg-white p-3 rounded shadow-sm flex-wrap gap-3">
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <label class="fw-bold text-secondary">📅 행사 날짜:</label>
         <input type="date" id="versionDateInput" class="form-control form-control-sm fw-bold text-primary" style="width: 150px;" onchange="loadVersion()">
         
         <label class="fw-bold text-secondary ms-2">행사 제목:</label>
-        <input type="text" id="versionNameInput" class="form-control form-control-sm fw-bold" style="width: 280px;" value="애터미 샤론로즈마스터 푸꾸옥 승급 여행">
+        <input type="text" id="versionNameInput" class="form-control form-control-sm fw-bold" style="width: 280px;" value="애터미 샤론로즈마스터 투어">
         
         <button class="btn btn-sm btn-success px-3 fw-bold" onclick="saveVersionData()">💾 전체 저장하기</button>
-        <button class="btn btn-sm btn-outline-primary px-3" onclick="duplicateCurrentToNewDate()">📋 현재 내용으로 새 회차 생성</button>
         <button class="btn btn-sm btn-outline-secondary px-3" onclick="createNewVersion()">✨ 빈 양식으로 시작</button>
       </div>
 
-      <!-- 저장된 행사 목록 선택 드롭다운 -->
-      <div class="d-flex align-items-center gap-2">
-        <label class="fw-bold text-secondary small">📁 저장된 회차 목록:</label>
-        <select id="savedVersionsSelect" class="form-select form-select-sm fw-bold text-dark" style="width: 250px;" onchange="selectSavedVersion(this.value)">
-          <option value="">-- 저장된 행사 불러오기 --</option>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <label class="fw-bold text-secondary small">📁 저장된 회차:</label>
+        <select id="savedVersionsSelect" class="form-select form-select-sm fw-bold text-dark" style="width: 220px;" onchange="selectSavedVersion(this.value)">
+          <option value="">-- 행사 불러오기 --</option>
         </select>
         <button class="btn btn-sm btn-danger px-2" onclick="deleteCurrentVersion()" title="현재 선택된 회차 삭제">🗑️ 삭제</button>
-        <button class="btn btn-sm btn-dark px-3 ms-2" onclick="window.print()">🖨️ 인쇄</button>
+        <button class="btn btn-sm btn-dark px-3 ms-2" onclick="triggerPrint()">🖨️ 인쇄</button>
       </div>
     </div>
 
-    <!-- Main Navigation Tabs -->
+    <!-- 탭 메뉴 -->
     <ul class="nav nav-tabs mb-3 no-print" id="mainTab" role="tablist">
       <li class="nav-item">
         <button class="nav-link active" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button">🗓️ 일정표 및 정보 관리</button>
@@ -262,27 +226,25 @@
 
     <div class="tab-content" id="mainTabContent">
       
-      <!-- 1. 일자별 일정표 및 상단 정보 탭 -->
+      <!-- 1. 일정표 탭 -->
       <div class="tab-pane fade show active" id="schedule" role="tabpanel">
         <div class="card p-4">
-          
-          <!-- 상단 정보 수정 영역 -->
           <div class="row g-3 mb-4">
             <div class="col-md-4">
               <div class="p-3 border rounded bg-white shadow-sm h-100 d-flex flex-column justify-content-between">
                 <div>
-                  <h6 class="fw-bold text-primary mb-2">✈️ 항공 편명 및 일정</h6>
+                  <h6 class="fw-bold text-primary mb-2">✈️️ 항공 편명 및 일정</h6>
                   <div class="mb-2">
                     <label class="small text-muted fw-bold">출국편 정보</label>
-                    <input type="text" id="flightOut" class="form-control form-control-sm" value="출국(KE485): 인천 → 푸꾸옥 (19:05 ~ 22:50)">
+                    <input type="text" id="flightOut" class="form-control form-control-sm">
                   </div>
                   <div>
                     <label class="small text-muted fw-bold">입국편 정보</label>
-                    <input type="text" id="flightIn" class="form-control form-control-sm" value="입국(KE486): 푸꾸옥 → 인천 (00:10 ~ 07:50)">
+                    <input type="text" id="flightIn" class="form-control form-control-sm">
                   </div>
                 </div>
                 <div class="mt-3 no-print">
-                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveTopInfoSection('항공 편명 및 일정')">💾 항공 정보 저장</button>
+                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveVersionData()">💾 항공 정보 저장</button>
                 </div>
               </div>
             </div>
@@ -293,15 +255,15 @@
                   <h6 class="fw-bold text-primary mb-2">🏨 투숙 호텔 정보 수정</h6>
                   <div class="mb-2">
                     <label class="small text-muted fw-bold">호텔명 및 일정</label>
-                    <input type="text" id="hotelName" class="form-control form-control-sm" value="모벤픽 푸꾸옥 리조트 (4박 5일)">
+                    <input type="text" id="hotelName" class="form-control form-control-sm">
                   </div>
                   <div>
                     <label class="small text-muted fw-bold">객실 타입 및 배정 수량</label>
-                    <input type="text" id="hotelRooms" class="form-control form-control-sm" value="TWN 15실 / KING 5실 / TRIPLE 2실">
+                    <input type="text" id="hotelRooms" class="form-control form-control-sm">
                   </div>
                 </div>
                 <div class="mt-3 no-print">
-                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveTopInfoSection('투숙 호텔 정보')">💾 호텔 정보 저장</button>
+                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveVersionData()">💾 호텔 정보 저장</button>
                 </div>
               </div>
             </div>
@@ -312,15 +274,15 @@
                   <h6 class="fw-bold text-primary mb-2">📞 현지 가이드 & 인솔자</h6>
                   <div class="mb-2">
                     <label class="small text-muted fw-bold">차량별 가이드</label>
-                    <input type="text" id="guideBus" class="form-control form-control-sm" value="1호:박재우(+84 939603023) / 2호:정보맨(+84 866743381)">
+                    <input type="text" id="guideBus" class="form-control form-control-sm">
                   </div>
                   <div>
                     <label class="small text-muted fw-bold">여행사 담당자</label>
-                    <input type="text" id="guideAgency" class="form-control form-control-sm" value="모두투어: 원광재 차장 / 김민제 과장">
+                    <input type="text" id="guideAgency" class="form-control form-control-sm">
                   </div>
                 </div>
                 <div class="mt-3 no-print">
-                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveTopInfoSection('가이드 정보')">💾 가이드 정보 저장</button>
+                  <button class="btn btn-sm btn-outline-success w-100 py-1" onclick="saveVersionData()">💾 가이드 정보 저장</button>
                 </div>
               </div>
             </div>
@@ -365,28 +327,32 @@
             <div class="col-md-3">
               <div class="stat-card d-flex justify-content-between align-items-center">
                 <div>
-                  <span class="text-muted small d-block">TWN 객실 요청</span>
-                  <h5 class="fw-bold text-secondary m-0" id="statTwnCount">0개</h5>
+                  <span class="text-muted small d-block">TWN / KING / TRIPLE 객실</span>
+                  <h6 class="fw-bold text-secondary m-0 mt-1" id="statRoomTypeSummary">0 / 0 / 0</h6>
                 </div>
                 <span class="fs-4">🛏️</span>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card d-flex justify-content-between align-items-center">
+              <div class="stat-card d-flex justify-content-between align-items-center border-warning">
                 <div>
-                  <span class="text-muted small d-block">KING 객실 요청</span>
-                  <h5 class="fw-bold text-secondary m-0" id="statKingCount">0개</h5>
+                  <span class="text-muted small d-block">미배정 인원 (조/방)</span>
+                  <h5 class="fw-bold text-danger m-0" id="statUnassignedCount">0명</h5>
                 </div>
-                <span class="fs-4">👑</span>
+                <span class="fs-4">⚠️</span>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card d-flex justify-content-between align-items-center">
+              <div class="stat-card d-flex justify-content-between align-items-center bg-light">
                 <div>
-                  <span class="text-muted small d-block">TRIPLE 객실 요청</span>
-                  <h5 class="fw-bold text-secondary m-0" id="statTripleCount">0개</h5>
+                  <span class="text-muted small d-block">엑셀 데이터 연동</span>
+                  <div class="d-flex gap-1 mt-1">
+                    <button class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.75rem;" onclick="exportToExcel()">📥 다운로드</button>
+                    <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" onclick="document.getElementById('excelFileInput').click()">📤 업로드</button>
+                    <input type="file" id="excelFileInput" class="d-none" accept=".xlsx, .xls, .csv" onchange="importFromExcel(event)">
+                  </div>
                 </div>
-                <span class="fs-4">👨‍👩‍👦</span>
+                <span class="fs-4">📊</span>
               </div>
             </div>
           </div>
@@ -397,7 +363,7 @@
               <h5 class="fw-bold text-dark m-0">🛋️ 루밍 리스트 관리</h5>
               <div class="btn-group btn-group-sm" role="group">
                 <button type="button" class="btn btn-outline-primary active" id="viewModeTableBtn" onclick="switchViewMode('table')">📋 표 형식 보기</button>
-                <button type="button" class="btn btn-outline-primary" id="viewModeCardBtn" onclick="switchViewMode('card')">🗂️ 방/조 기준 카드 배치</button>
+                <button type="button" class="btn btn-outline-primary" id="viewModeCardBtn" onclick="switchViewMode('card')">🗂️ 방/조 기준 카드 배치 (드래그 가능)</button>
               </div>
             </div>
             <div class="d-flex gap-2 no-print">
@@ -411,13 +377,6 @@
             <div class="d-flex align-items-center gap-2">
               <span id="summaryBadge" class="badge bg-primary fs-6 fw-normal">총 0명</span>
               <button class="btn btn-sm btn-outline-primary py-1 no-print" onclick="autoGroupBy4()">일행 유지하며 4인 1조 자동지정</button>
-            </div>
-          </div>
-
-          <div class="alert alert-light border d-flex align-items-center justify-content-between mb-3 py-2 no-print">
-            <div>
-              <span class="text-primary fw-bold small">💡 입력 팁:</span>
-              <span class="text-muted small">행이나 카드를 클릭하면 <b>[조, 가족관계, 룸타입, 방번호]</b>를 모달에서 빠르게 수정할 수 있습니다. 각 행의 [➕ 행추가]를 누르면 해당 인물 아래에 바로 팀원을 추가할 수 있습니다.</span>
             </div>
           </div>
 
@@ -451,12 +410,12 @@
     </div>
   </div>
 
-  <!-- 모달 (Modal) -->
-  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <!-- 모달 창 -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header bg-light">
-          <h6 class="modal-header-title fw-bold m-0" id="editModalLabel">👤 명단 정보 수정</h6>
+          <h6 class="modal-header-title fw-bold m-0">👤 명단 정보 수정</h6>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body p-4">
@@ -541,117 +500,8 @@
   </div>
 
   <script>
-    const defaultSchedule = [
-      { day: "DAY 1 (9/30)", time: "19:05", detail: "인천 국제 공항 출발 (KE485)\n푸꾸옥 국제 공항 도착 (22:50)\n호텔 투숙 및 휴식 (모벤픽 푸꾸옥 리조트)", meal: "조: X\n중: X\n석: 기내식" },
-      { day: "DAY 2 (10/1)", time: "전일", detail: "호텔에서 조식 후\n(오전) 호텔 부대 시설 이용 및 자유 시간\n\n[푸꾸옥 남부 투어]\n전신 마사지 90분 (매너 팁 포함)\n키스 브릿지\n심포니 오브 더 씨", meal: "조: 호텔식\n중: 호텔식 (한식 SET)\n석: 현지식 (갱스)" },
-      { day: "DAY 3 (10/2)", time: "전일", detail: "호텔에서 조식 후\n(오전 / 오후) 호텔 부대 시설 이용 및 자유 시간\n애터미 호텔 단독 만찬 및 가족 세미나 (17:30 ~ 20:00)\n호텔 투숙 및 휴식", meal: "조: 호텔식\n중: 호텔식 (바우처 SET 택 1)\n석: 호텔 만찬 (단독 뷔페)" },
-      { day: "DAY 4 (10/3)", time: "21:30", detail: "호텔에서 조식 후 (오전) 호텔 부대 시설 이용 및 자유 시간\n호텔 체크아웃\n킹콩 마트 및 여행자 거리 자유 시간\n전신 마사지 90분 (매너 팁 포함)\n즈엉동 야시장\n푸꾸옥 국제 공항 이동", meal: "조: 호텔식\n중: 껌디디\n석: 한식 (한국관)" },
-      { day: "DAY 5 (10/4)", time: "00:10", detail: "푸꾸옥 국제 공항 출발 (00:10)\n인천 국제 공항 도착 (07:50)", meal: "조: 기내식\n중: X\n석: X" }
-    ];
-
-    const defaultRooming = [
-      { bus: "1호차", group: "1조", roomNo: "", name: "나르기자", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "1조", roomNo: "", name: "이영애", relation: "딸", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "1조", roomNo: "", name: "정희수", relation: "대상자", roomType: "TWN", memo: "인접방" },
-      { bus: "1호차", group: "1조", roomNo: "", name: "정영철", relation: "아버지", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "2조", roomNo: "", name: "김영희", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "2조", roomNo: "", name: "장현서", relation: "딸", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "2조", roomNo: "", name: "이지은", relation: "대상자", roomType: "TWN", memo: "인접방" },
-      { bus: "1호차", group: "2조", roomNo: "", name: "조혜정", relation: "딸", roomType: "TWN", memo: "(2019/05/03)" },
-      { bus: "1호차", group: "3조", roomNo: "", name: "이선규", relation: "아버지", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "3조", roomNo: "", name: "황신자", relation: "어머니", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "3조", roomNo: "", name: "이철규", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "3조", roomNo: "", name: "박승미", relation: "아내", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "4조", roomNo: "", name: "오기", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "4조", roomNo: "", name: "친조릭", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "4조", roomNo: "", name: "황미선", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "4조", roomNo: "", name: "배건호", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "5조", roomNo: "", name: "김영용", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "5조", roomNo: "", name: "김민자", relation: "아내", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "5조", roomNo: "", name: "이재영", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "5조", roomNo: "", name: "원명란", relation: "아내", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "6조", roomNo: "", name: "최미선", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "6조", roomNo: "", name: "정재일", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "6조", roomNo: "", name: "조오익", relation: "대상자", roomType: "TWN", memo: "인접방" },
-      { bus: "1호차", group: "6조", roomNo: "", name: "김한나", relation: "아내", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "7조", roomNo: "", name: "김경숙", relation: "대상자", roomType: "KING", memo: "" },
-      { bus: "1호차", group: "7조", roomNo: "", name: "이순옥", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "7조", roomNo: "", name: "김영섭", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "8조", roomNo: "", name: "채정순", relation: "대상자", roomType: "TWN", memo: "인접방" },
-      { bus: "1호차", group: "8조", roomNo: "", name: "김슬기", relation: "딸", roomType: "TWN", memo: "" },
-      { bus: "1호차", group: "8조", roomNo: "", name: "노영종", relation: "사위", roomType: "TRIPLE", memo: "EB CHD" },
-      { bus: "1호차", group: "8조", roomNo: "", name: "노유담", relation: "손자", roomType: "TRIPLE", memo: "(2021/07/09)" },
-      { bus: "1호차", group: "8조", roomNo: "", name: "노이담", relation: "손자", roomType: "TRIPLE", memo: "(2022/10/10)" },
-
-      { bus: "2호차", group: "1조", roomNo: "", name: "김춘화", relation: "대상자", roomType: "TRIPLE", memo: "EB CHD" },
-      { bus: "2호차", group: "1조", roomNo: "", name: "이유영", relation: "사위", roomType: "TRIPLE", memo: "" },
-      { bus: "2호차", group: "1조", roomNo: "", name: "이주현", relation: "손녀", roomType: "TRIPLE", memo: "(21/04/18)" },
-      { bus: "2호차", group: "1조", roomNo: "", name: "백전하", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "2조", roomNo: "", name: "강병욱", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "2조", roomNo: "", name: "우선미", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "2조", roomNo: "", name: "신현서", relation: "딸", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "2조", roomNo: "", name: "최수천", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "3조", roomNo: "", name: "김춘화", relation: "아내", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "3조", roomNo: "", name: "정한진", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "3조", roomNo: "", name: "조점숙", relation: "어머니", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "3조", roomNo: "", name: "김병태", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "4조", roomNo: "", name: "이옥순", relation: "아내", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "4조", roomNo: "", name: "강형권", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "4조", roomNo: "", name: "석연숙", relation: "아내", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "4조", roomNo: "", name: "윤영자", relation: "대상자", roomType: "TRIPLE", memo: "EB ADT" },
-      { bus: "2호차", group: "5조", roomNo: "", name: "장석상", relation: "남편", roomType: "TRIPLE", memo: "" },
-      { bus: "2호차", group: "5조", roomNo: "", name: "윤범진", relation: "아버지", roomType: "TRIPLE", memo: "" },
-      { bus: "2호차", group: "5조", roomNo: "", name: "최정태", relation: "대상자", roomType: "KING", memo: "" },
-      { bus: "2호차", group: "5조", roomNo: "", name: "강나연", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "6조", roomNo: "", name: "박범동", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "6조", roomNo: "", name: "이수경", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "6조", roomNo: "", name: "최은례", relation: "어머니", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "6조", roomNo: "", name: "임종혁", relation: "대상자", roomType: "KING", memo: "" },
-      { bus: "2호차", group: "7조", roomNo: "", name: "이주원", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "7조", roomNo: "", name: "오도연", relation: "딸", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "7조", roomNo: "", name: "박미선희", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "7조", roomNo: "", name: "길정수", relation: "아들", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "8조", roomNo: "", name: "최윤환", relation: "대상자", roomType: "KING", memo: "" },
-      { bus: "2호차", group: "8조", roomNo: "", name: "조남주", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "8조", roomNo: "", name: "연제인", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "8조", roomNo: "", name: "정진호", relation: "대상자", roomType: "KING", memo: "" },
-      { bus: "2호차", group: "9조", roomNo: "", name: "이경옥", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "2호차", group: "9조", roomNo: "", name: "김가현", relation: "딸", roomType: "TWN", memo: "" },
-
-      { bus: "3호차", group: "1조", roomNo: "", name: "송지연", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "1조", roomNo: "", name: "강백호", relation: "아들", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "1조", roomNo: "", name: "박미숙", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "1조", roomNo: "", name: "박성빈", relation: "아들", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "2조", roomNo: "", name: "이다경", relation: "대상자", roomType: "TRIPLE", memo: "EB ADT" },
-      { bus: "3호차", group: "2조", roomNo: "", name: "최잠숙", relation: "어머니", roomType: "TRIPLE", memo: "" },
-      { bus: "3호차", group: "2조", roomNo: "", name: "이재종", relation: "아버지", roomType: "TRIPLE", memo: "" },
-      { bus: "3호차", group: "2조", roomNo: "", name: "공대한", relation: "대상자", roomType: "TRIPLE", memo: "EB CHD" },
-      { bus: "3호차", group: "3조", roomNo: "", name: "김수정", relation: "아내", roomType: "TRIPLE", memo: "" },
-      { bus: "3호차", group: "3조", roomNo: "", name: "공도윤", relation: "아들", roomType: "TRIPLE", memo: "(2016/01/03)" },
-      { bus: "3호차", group: "3조", roomNo: "", name: "공하윤", relation: "딸", roomType: "TRIPLE", memo: "(2017/11/16)" },
-      { bus: "3호차", group: "3조", roomNo: "", name: "정숙희", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "4조", roomNo: "", name: "양호남", relation: "아들", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "4조", roomNo: "", name: "박선경", relation: "대상자", roomType: "TRIPLE", memo: "EB CHD" },
-      { bus: "3호차", group: "4조", roomNo: "", name: "김은솔", relation: "딸", roomType: "TRIPLE", memo: "" },
-      { bus: "3호차", group: "4조", roomNo: "", name: "김민채", relation: "딸", roomType: "TRIPLE", memo: "(2016/11/23)" },
-      { bus: "3호차", group: "5조", roomNo: "", name: "홍예섬", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "5조", roomNo: "", name: "최하람", relation: "딸", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "5조", roomNo: "", name: "정영애", relation: "대상자", roomType: "TRIPLE", memo: "EB ADT" },
-      { bus: "3호차", group: "5조", roomNo: "", name: "문상권", relation: "남편", roomType: "TRIPLE", memo: "2방에서 1방 변경" },
-      { bus: "3호차", group: "6조", roomNo: "", name: "문제헌", relation: "아들", roomType: "TRIPLE", memo: "" },
-      { bus: "3호차", group: "6조", roomNo: "", name: "문주하", relation: "딸", roomType: "TRIPLE", memo: "(2016/05/12)" },
-      { bus: "3호차", group: "6조", roomNo: "", name: "체체그", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "6조", roomNo: "", name: "엄마영", relation: "딸", roomType: "TWN", memo: "(2017/08/24)" },
-      { bus: "3호차", group: "7조", roomNo: "", name: "정영란", relation: "대상자", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "7조", roomNo: "", name: "임길선", relation: "남편", roomType: "TWN", memo: "" },
-      { bus: "3호차", group: "7조", roomNo: "", name: "윤진용", relation: "대상자", roomType: "KING", memo: "" },
-
-      { bus: "스태프", group: "모두투어", roomNo: "", name: "원광재", relation: "인솔자", roomType: "TWN", memo: "" },
-      { bus: "스태프", group: "모두투어", roomNo: "", name: "김민제", relation: "인솔자", roomType: "TWN", memo: "" },
-      { bus: "스태프", group: "애터미", roomNo: "", name: "강한힘", relation: "스태프", roomType: "KING", memo: "" },
-      { bus: "스태프", group: "애터미", roomNo: "", name: "서대석", relation: "스태프", roomType: "TWN", memo: "" },
-      { bus: "스태프", group: "애터미", roomNo: "", name: "이성훈", relation: "스태프", roomType: "TWN", memo: "" },
-      { bus: "스태프", group: "애터미", roomNo: "", name: "송정민", relation: "스태프", roomType: "KING", memo: "" }
+    const emptySchedule = [
+      { day: "DAY 1", time: "", detail: "", meal: "조: \n중: \n석: " }
     ];
 
     let scheduleData = [];
@@ -683,11 +533,12 @@
 
     function updateSavedVersionsDropdown(currentKey) {
       const select = document.getElementById("savedVersionsSelect");
-      select.innerHTML = '<option value="">-- 저장된 행사 불러오기 --</option>';
+      select.innerHTML = '<option value="">-- 행사 불러오기 --</option>';
 
       let keys = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
+        // 이전 버전 키(atomy_tour_data 등)와 현재 키(atomy_tour_날짜) 모두 호환되도록 처리
         if (key.startsWith("atomy_tour_")) {
           keys.push(key.replace("atomy_tour_", ""));
         }
@@ -718,23 +569,40 @@
       if (!dateInput) return;
 
       const storageKey = `atomy_tour_${dateInput}`;
-      const savedData = localStorage.getItem(storageKey);
+      let savedData = localStorage.getItem(storageKey);
+
+      // 만약 날짜별 데이터가 없다면 예전 단일 데이터 키(atomy_tour_data)가 있는지 확인 후 자동 마이그레이션
+      if (!savedData && localStorage.getItem("atomy_tour_data")) {
+        savedData = localStorage.getItem("atomy_tour_data");
+      }
 
       if (savedData) {
-        const parsed = JSON.parse(savedData);
-        document.getElementById("versionNameInput").value = parsed.versionName || "애터미 샤론로즈마스터 푸꾸옥 승급 여행";
-        document.getElementById("flightOut").value = parsed.flightOut || "출국(KE485): 인천 → 푸꾸옥 (19:05 ~ 22:50)";
-        document.getElementById("flightIn").value = parsed.flightIn || "입국(KE486): 푸꾸옥 → 인천 (00:10 ~ 07:50)";
-        document.getElementById("hotelName").value = parsed.hotelName || "모벤픽 푸꾸옥 리조트 (4박 5일)";
-        document.getElementById("hotelRooms").value = parsed.hotelRooms || "TWN 15실 / KING 5실 / TRIPLE 2실";
-        document.getElementById("guideBus").value = parsed.guideBus || "1호:박재우(+84 939603023) / 2호:정보맨(+84 866743381)";
-        document.getElementById("guideAgency").value = parsed.guideAgency || "모두투어: 원광재 차장 / 김민제 과장";
-        
-        scheduleData = parsed.schedule && parsed.schedule.length > 0 ? parsed.schedule : JSON.parse(JSON.stringify(defaultSchedule));
-        roomingData = parsed.rooming && parsed.rooming.length > 0 ? parsed.rooming : JSON.parse(JSON.stringify(defaultRooming));
+        try {
+          const parsed = JSON.parse(savedData);
+          document.getElementById("versionNameInput").value = parsed.versionName || "애터미 투어";
+          document.getElementById("flightOut").value = parsed.flightOut || "";
+          document.getElementById("flightIn").value = parsed.flightIn || "";
+          document.getElementById("hotelName").value = parsed.hotelName || "";
+          document.getElementById("hotelRooms").value = parsed.hotelRooms || "";
+          document.getElementById("guideBus").value = parsed.guideBus || "";
+          document.getElementById("guideAgency").value = parsed.guideAgency || "";
+          
+          scheduleData = parsed.schedule && parsed.schedule.length > 0 ? parsed.schedule : JSON.parse(JSON.stringify(emptySchedule));
+          roomingData = parsed.rooming ? parsed.rooming : [];
+        } catch (e) {
+          console.error("데이터 파싱 오류", e);
+        }
       } else {
-        scheduleData = JSON.parse(JSON.stringify(defaultSchedule));
-        roomingData = JSON.parse(JSON.stringify(defaultRooming));
+        document.getElementById("versionNameInput").value = "애터미 투어";
+        document.getElementById("flightOut").value = "";
+        document.getElementById("flightIn").value = "";
+        document.getElementById("hotelName").value = "";
+        document.getElementById("hotelRooms").value = "";
+        document.getElementById("guideBus").value = "";
+        document.getElementById("guideAgency").value = "";
+
+        scheduleData = JSON.parse(JSON.stringify(emptySchedule));
+        roomingData = [];
       }
 
       renderScheduleTable();
@@ -769,32 +637,9 @@
       };
 
       localStorage.setItem(storageKey, JSON.stringify(payload));
+      localStorage.setItem("atomy_tour_data", JSON.stringify(payload)); // 백업용 공용 키 저장
       updateSavedVersionsDropdown(dateInput);
       alert(`[${dateInput}] 행사 데이터가 성공적으로 저장되었습니다!`);
-    }
-
-    function saveTopInfoSection(sectionName) {
-      saveVersionData();
-      alert(`[${sectionName}] 정보가 저장되었습니다.`);
-    }
-
-    function saveScheduleRow(index) {
-      saveVersionData();
-      alert(`[DAY ${index + 1}] 일정 내용이 개별 저장되었습니다.`);
-    }
-
-    function duplicateCurrentToNewDate() {
-      const newDate = prompt("새로운 회차의 행사 날짜를 입력하세요 (예: 2026-11-15):", "");
-      if (!newDate) return;
-
-      const storageKey = `atomy_tour_${newDate}`;
-      if (localStorage.getItem(storageKey)) {
-        if (!confirm(`이미 [${newDate}] 날짜로 저장된 데이터가 있습니다. 덮어씌우시겠습니까?`)) return;
-      }
-
-      document.getElementById("versionDateInput").value = newDate;
-      saveVersionData();
-      alert(`기존 일정을 복사하여 [${newDate}] 새 회차가 생성되었습니다!`);
     }
 
     function createNewVersion() {
@@ -802,12 +647,21 @@
       if (!newDate) return;
 
       document.getElementById("versionDateInput").value = newDate;
-      scheduleData = JSON.parse(JSON.stringify(defaultSchedule));
-      roomingData = JSON.parse(JSON.stringify(defaultRooming));
+      document.getElementById("versionNameInput").value = "애터미 투어";
+      document.getElementById("flightOut").value = "";
+      document.getElementById("flightIn").value = "";
+      document.getElementById("hotelName").value = "";
+      document.getElementById("hotelRooms").value = "";
+      document.getElementById("guideBus").value = "";
+      document.getElementById("guideAgency").value = "";
+
+      scheduleData = JSON.parse(JSON.stringify(emptySchedule));
+      roomingData = [];
+
       renderScheduleTable();
       renderRoomingTable();
       updateSavedVersionsDropdown(newDate);
-      alert(`${newDate} 날짜로 기본 양식이 준비되었습니다.`);
+      alert(`${newDate} 날짜로 빈 양식이 준비되었습니다.`);
     }
 
     function deleteCurrentVersion() {
@@ -848,7 +702,7 @@
           renderedDays[item.day] = true;
           dayCellHTML = `
             <td class="day-cell" rowspan="${totalRowsForThisDay}">
-              <input type="text" class="form-control form-control-sm text-center fw-bold text-primary bg-transparent border-0" value="${item.day}" onchange="updateDayName('${item.day}', this.value)" placeholder="DAY 1 (9/30)">
+              <input type="text" class="form-control form-control-sm text-center fw-bold text-primary bg-transparent border-0" value="${item.day}" onchange="updateDayName('${item.day}', this.value)" placeholder="DAY 1">
             </td>
           `;
         }
@@ -859,7 +713,7 @@
           <td><textarea class="form-control form-control-sm manual-resize-textarea" rows="4" oninput="updateSchedule(${index}, 'detail', this.value)" placeholder="상세 일정을 입력하세요">${item.detail || ''}</textarea></td>
           <td><textarea class="form-control form-control-sm meal-box manual-resize-textarea" rows="4" oninput="updateSchedule(${index}, 'meal', this.value)" placeholder="조:\n중:\n석:">${item.meal || ''}</textarea></td>
           <td class="no-print text-center">
-            <button class="btn btn-sm btn-outline-success py-1 px-2 mb-1 w-100" onclick="saveScheduleRow(${index})" title="이 행 수정사항 저장">💾 수정저장</button>
+            <button class="btn btn-sm btn-outline-success py-1 px-2 mb-1 w-100" onclick="saveVersionData()" title="저장">💾 저장</button>
             <button class="btn btn-outline-danger btn-sm py-1 px-2 w-100" onclick="deleteSchedule(${index})" title="행 삭제">🗑️ 삭제</button>
           </td>
         `;
@@ -881,10 +735,10 @@
     }
 
     function addScheduleBlock() {
-      const newDay = prompt("새로운 날짜명을 입력하세요 (예: DAY 5 (10/4)):", "DAY 5 (10/4)");
+      const newDay = prompt("새로운 날짜명을 입력하세요 (예: DAY 2):", "DAY 2");
       if (!newDay) return;
 
-      scheduleData.push({ day: newDay, time: "", detail: "일정 내용 입력", meal: "조: X\n중: X\n석: X" });
+      scheduleData.push({ day: newDay, time: "", detail: "", meal: "조: \n중: \n석: " });
       renderScheduleTable();
     }
 
@@ -911,9 +765,14 @@
 
     function updateStatistics() {
       document.getElementById("statTotalCount").innerText = `${roomingData.length}명`;
-      document.getElementById("statTwnCount").innerText = `${roomingData.filter(i => i.roomType === 'TWN').length}건`;
-      document.getElementById("statKingCount").innerText = `${roomingData.filter(i => i.roomType === 'KING').length}건`;
-      document.getElementById("statTripleCount").innerText = `${roomingData.filter(i => i.roomType === 'TRIPLE').length}건`;
+      
+      const twn = roomingData.filter(i => i.roomType === 'TWN').length;
+      const king = roomingData.filter(i => i.roomType === 'KING').length;
+      const triple = roomingData.filter(i => i.roomType === 'TRIPLE').length;
+      document.getElementById("statRoomTypeSummary").innerText = `${twn} / ${king} / ${triple}`;
+
+      const unassigned = roomingData.filter(i => !i.group || !i.roomNo).length;
+      document.getElementById("statUnassignedCount").innerText = `${unassigned}명`;
     }
 
     function renderFilterButtons() {
@@ -962,6 +821,11 @@
       const tbody = document.getElementById("roomingTableBody");
       tbody.innerHTML = "";
 
+      if (filteredData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">등록된 인원이 없습니다. 상단의 [+ 인원 추가] 버튼을 누르거나 엑셀 파일을 업로드하세요.</td></tr>`;
+        return;
+      }
+
       filteredData.forEach((item, index) => {
         const globalIndex = roomingData.indexOf(item);
         const tr = document.createElement("tr");
@@ -972,8 +836,9 @@
 
         const relationBadgeClass = item.relation === '대상자' ? 'badge-relation-target' : 'badge-relation-family';
         const seqNo = String(index + 1).padStart(2, '0');
-        const busDisplay = `<span class="bus-num-badge">${item.bus}-${seqNo}</span>`;
-        const groupDisplay = item.group ? `<span class="badge bg-success-subtle text-success border border-success-subtle badge-group">${item.group}</span>` : '<span class="text-muted small">미지정</span>';
+        const busDisplay = `<span class="bus-num-badge">${item.bus || '1호차'}-${seqNo}</span>`;
+        const groupDisplay = item.group ? `<span class="badge bg-success-subtle text-success border border-success-subtle badge-group">${item.group}</span>` : '<span class="text-danger small fw-bold">미지정</span>';
+        const roomDisplay = item.roomNo ? `<span class="fw-bold text-primary fs-6">${item.roomNo}</span>` : '<span class="text-danger small fw-bold">미배정</span>';
 
         tr.onclick = (e) => {
           if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
@@ -983,10 +848,10 @@
         tr.innerHTML = `
           <td>${busDisplay}</td>
           <td>${groupDisplay}</td>
-          <td class="fw-bold text-primary fs-6">${item.roomNo || '-'}</td>
+          <td>${roomDisplay}</td>
           <td class="fw-bold text-dark family-group-border text-start">${item.name}</td>
           <td><span class="badge ${relationBadgeClass}">${item.relation}</span></td>
-          <td><span class="badge badge-roomtype">${item.roomType}</span></td>
+          <td><span class="badge badge-roomtype">${item.roomType || 'TWN'}</span></td>
           <td class="text-start text-secondary small">${item.memo || ''}</td>
           <td class="no-print text-center" onclick="event.stopPropagation()">
             <button class="btn btn-sm btn-outline-success py-0 px-1 mb-1 w-100" onclick="insertMemberAfter(${globalIndex})" title="이 인물 바로 아래에 추가">➕ 행추가</button>
@@ -1004,13 +869,18 @@
       const grid = document.getElementById("roomCardGrid");
       grid.innerHTML = "";
 
+      if (filteredData.length === 0) {
+        grid.innerHTML = '<div class="text-center text-muted py-4 col-12">등록된 인원이 없습니다.</div>';
+        return;
+      }
+
       const groups = {};
       filteredData.forEach(item => {
         const key = item.roomNo ? `방: ${item.roomNo}` : (item.group ? `조: ${item.group}` : `미배정 그룹`);
         if (!groups[key]) {
           groups[key] = {
             roomType: item.roomType || 'TWN',
-            bus: item.bus,
+            bus: item.bus || '1호차',
             group: item.group || '',
             roomNo: item.roomNo || '',
             members: []
@@ -1019,42 +889,35 @@
         groups[key].members.push({ item, globalIndex: roomingData.indexOf(item) });
       });
 
-      const keys = Object.keys(groups);
-      if (keys.length === 0) {
-        grid.innerHTML = '<div class="text-center text-muted py-4">표시할 데이터가 없습니다.</div>';
-        return;
-      }
-
-      keys.forEach(key => {
+      Object.keys(groups).forEach(key => {
         const groupInfo = groups[key];
         const col = document.createElement("div");
-        col.className = "col-md-4 col-sm-6";
+        col.className = "col-md-4 col-sm-6 mb-3";
 
         let membersHTML = groupInfo.members.map(m => {
           const relClass = m.item.relation === '대상자' ? 'badge-relation-target' : 'badge-relation-family';
           return `
-            <div class="room-member-row" style="cursor: pointer;" onclick="openEditModal(${m.globalIndex})">
+            <div class="room-member-row" draggable="true" ondragstart="handleDragStart(event, ${m.globalIndex})" onclick="openEditModal(${m.globalIndex})">
               <div>
-                <span class="fw-bold text-dark me-2">${m.item.name}</span>
+                <span class="fw-bold text-dark me-2">⠿ ${m.item.name}</span>
                 <span class="badge ${relClass}" style="font-size:0.75rem; padding:2px 6px;">${m.item.relation}</span>
                 ${m.item.memo ? `<span class="text-muted small ms-1">(${m.item.memo})</span>` : ''}
               </div>
               <div class="no-print d-flex gap-1">
                 <button class="btn btn-sm btn-outline-success py-0 px-1" style="font-size:0.7rem;" onclick="event.stopPropagation(); insertMemberAfter(${m.globalIndex})" title="바로 아래 추가">➕</button>
                 <button class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.75rem;" onclick="event.stopPropagation(); openEditModal(${m.globalIndex})">수정</button>
-                <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.75rem;" onclick="event.stopPropagation(); deleteMember(${m.globalIndex})">삭제</button>
               </div>
             </div>
           `;
         }).join('');
 
         col.innerHTML = `
-          <div class="room-card-item">
+          <div class="room-card-item h-100" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${groupInfo.group}', '${groupInfo.roomNo}')">
             <div class="room-card-header">
               <div>
                 <span class="badge bg-secondary me-1">${groupInfo.bus}</span>
-                ${groupInfo.group ? `<span class="badge bg-success me-1">${groupInfo.group}</span>` : ''}
-                <span class="text-primary fw-bold">${groupInfo.roomNo ? groupInfo.roomNo : key}</span>
+                ${groupInfo.group ? `<span class="badge bg-success me-1">${groupInfo.group}</span>` : '<span class="badge bg-danger me-1">조 미지정</span>'}
+                <span class="text-primary fw-bold">${groupInfo.roomNo ? groupInfo.roomNo : '방 미배정'}</span>
               </div>
               <span class="badge badge-roomtype" style="font-size:0.8rem; padding:3px 8px;">${groupInfo.roomType}</span>
             </div>
@@ -1067,6 +930,110 @@
       });
     }
 
+    let draggedGlobalIndex = null;
+
+    function handleDragStart(e, index) {
+      draggedGlobalIndex = index;
+      e.dataTransfer.effectAllowed = "move";
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      e.currentTarget.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, targetGroup, targetRoomNo) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+
+      if (draggedGlobalIndex !== null && draggedGlobalIndex !== undefined) {
+        if (targetGroup) roomingData[draggedGlobalIndex].group = targetGroup;
+        if (targetRoomNo) roomingData[draggedGlobalIndex].roomNo = targetRoomNo;
+        
+        renderRoomingTable();
+        draggedGlobalIndex = null;
+      }
+    }
+
+    function exportToExcel() {
+      if (roomingData.length === 0) {
+        alert("내보낼 루밍 리스트 데이터가 없습니다.");
+        return;
+      }
+
+      const excelData = roomingData.map((item, idx) => ({
+        "순번": idx + 1,
+        "호차": item.bus,
+        "조 구분": item.group || "",
+        "방 번호": item.roomNo || "",
+        "한글명": item.name,
+        "가족관계": item.relation,
+        "룸 타입": item.roomType,
+        "특이사항 / 메모": item.memo || ""
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "RoomingList");
+
+      const dateStr = document.getElementById("versionDateInput").value || "tour";
+      const titleStr = document.getElementById("versionNameInput").value || "애터미투어";
+      XLSX.writeFile(workbook, `${dateStr}_${titleStr}_루밍리스트.xlsx`);
+    }
+
+    function importFromExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet);
+
+          if (json.length === 0) {
+            alert("엑셀 파일에 데이터가 없습니다.");
+            return;
+          }
+
+          roomingData = json.map(row => ({
+            bus: row["호차"] || row["버전"] || "1호차",
+            group: row["조 구분"] || row["조"] || "",
+            roomNo: row["방 번호"] || row["방번호"] || "",
+            name: row["한글명"] || row["이름"] || "이름없음",
+            relation: row["가족관계"] || "대상자",
+            roomType: row["룸 타입"] || row["룸타입"] || "TWN",
+            memo: row["특이사항 / 메모"] || row["메모"] || ""
+          }));
+
+          renderRoomingTable();
+          alert(`엑셀 파일에서 총 ${roomingData.length}명의 명단을 성공적으로 불러왔습니다!`);
+        } catch (err) {
+          console.error(err);
+          alert("엑셀 파일을 읽는 중 오류가 발생했습니다. 양식을 확인해주세요.");
+        }
+        event.target.value = "";
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function triggerPrint() {
+      const dateVal = document.getElementById("versionDateInput").value;
+      const nameVal = document.getElementById("versionNameInput").value;
+      document.getElementById("printTitle").innerText = nameVal || "애터미 투어 행사 관리 시스템";
+      document.getElementById("printDateSpan").innerText = dateVal || "-";
+      document.getElementById("printTimestamp").innerText = new Date().toLocaleString();
+      window.print();
+    }
+
     function filterBus(busName) {
       currentBusFilter = busName;
       document.getElementById("searchInput").value = ""; 
@@ -1077,13 +1044,13 @@
       const item = roomingData[index];
       document.getElementById("modalTargetIndex").value = index;
       document.getElementById("modalName").innerText = item.name;
-      document.getElementById("modalBus").innerText = item.bus;
+      document.getElementById("modalBus").innerText = item.bus || '1호차';
       document.getElementById("modalGroupInput").value = item.group || "";
       document.getElementById("modalRoomNoInput").value = item.roomNo || "";
       document.getElementById("modalMemoInput").value = item.memo || "";
 
-      setActiveChip('relationChips', item.relation);
-      setActiveChip('roomTypeChips', item.roomType);
+      setActiveChip('relationChips', item.relation || '대상자');
+      setActiveChip('roomTypeChips', item.roomType || 'TWN');
 
       if (!bootstrapModal) {
         bootstrapModal = new bootstrap.Modal(document.getElementById('editModal'));
@@ -1158,19 +1125,18 @@
       renderRoomingTable();
     }
 
-    // 특정 인물 바로 아래에 새 팀원 추가하는 함수
     function insertMemberAfter(index) {
       const targetItem = roomingData[index];
       const name = prompt(`[${targetItem.name}] 님 바로 아래에 추가할 분의 이름을 입력하세요:`);
       if (!name) return;
 
       const newItem = {
-        bus: targetItem.bus,
-        group: targetItem.group,
-        roomNo: targetItem.roomNo,
+        bus: targetItem.bus || '1호차',
+        group: targetItem.group || '',
+        roomNo: targetItem.roomNo || '',
         name: name,
         relation: "가족",
-        roomType: targetItem.roomType,
+        roomType: targetItem.roomType || 'TWN',
         memo: ""
       };
 
@@ -1179,10 +1145,14 @@
     }
 
     function autoGroupBy4() {
+      if (roomingData.length === 0) {
+        alert("배정할 인원이 없습니다!");
+        return;
+      }
       if (!confirm("현재 버스별 인원을 기준으로 일행이 끊기지 않게 4인 1조를 자동 배정합니다. 진행하시겠습니까?")) return;
 
       ['1호차', '2호차', '3호차'].forEach(bus => {
-        const busMembers = roomingData.filter(i => i.bus === bus);
+        const busMembers = roomingData.filter(i => (i.bus || '1호차') === bus);
         let groupNum = 1;
         let countInGroup = 0;
 
@@ -1213,8 +1183,21 @@
     }
 
     window.onload = function() {
-      const defaultDate = "2026-09-29"; 
-      document.getElementById("versionDateInput").value = defaultDate;
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById("versionDateInput").value = todayStr;
+      
+      // 저장된 데이터 불러오기 시도 (기존 공용 키 및 날짜 키 지원)
+      if (localStorage.getItem("atomy_tour_data")) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem("atomy_tour_data"));
+          if (parsed && parsed.rooming && parsed.rooming.length > 0) {
+            roomingData = parsed.rooming;
+            scheduleData = parsed.schedule || scheduleData;
+            document.getElementById("versionNameInput").value = parsed.versionName || "애터미 투어";
+          }
+        } catch(e) {}
+      }
+      
       loadVersion();
     };
   </script>
